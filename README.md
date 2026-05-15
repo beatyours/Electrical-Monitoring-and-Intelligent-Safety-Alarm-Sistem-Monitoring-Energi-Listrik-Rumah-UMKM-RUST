@@ -229,14 +229,16 @@ Menghentikan program.
 
 ## 📸 Screenshot
 
-### Dashboard — Kondisi AMAN
-> *(tambahkan screenshot `screenshots/dashboard_aman.png`)*
+### Dashboard — Kondisi AMAN, WASPADA & BAHAYA + Terminal
 
-### Dashboard — Kondisi WASPADA & BAHAYA
-> *(tambahkan screenshot `screenshots/dashboard_bahaya.png`)*
+![ELISA Dashboard](HASIL_PROGRAM.png)
 
-### Terminal — Menu Utama
-> *(tambahkan screenshot `screenshots/terminal_menu.png`)*
+> Tampilan *dashboard* web ELISA pada skenario injeksi kebocoran:
+> - **MCB DAPUR** → 🟢 AMAN (I_bocor = 1.00 mA)
+> - **MCB KAMAR** → 🟡 WASPADA (I_bocor = 18.00 mA)
+> - **MCB R.TAMU** → 🔴 BAHAYA (I_bocor = 30.00 mA, Buzzer ON)
+>
+> Panel kanan menampilkan source code `main.rs` di VS Code dan output terminal setelah injeksi kebocoran dieksekusi.
 
 ---
 
