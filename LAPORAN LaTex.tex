@@ -1,0 +1,721 @@
+\documentclass[12pt,a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage[bahasa]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage[space]{grffile}  % handle spasi/titik dalam nama file gambar
+
+% ── Hyperref setup ────────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black
+}
+
+% ── Listing style for Rust code ───────────────────────────────────────────────
+\definecolor{rustbg}{RGB}{248,248,248}
+\definecolor{rustkw}{RGB}{175,0,219}
+\definecolor{rustcmt}{RGB}{106,153,85}
+\definecolor{ruststr}{RGB}{206,145,120}
+\definecolor{rustnum}{RGB}{181,206,168}
+
+\lstdefinelanguage{Rust}{
+    keywords={fn, let, mut, struct, impl, enum, match, if, else, for, loop,
+               while, return, use, pub, mod, self, Self, true, false, as,
+               in, ref, move, where, type, const, static, extern, crate,
+               super, trait, dyn, async, await, Box, Vec, String, Option,
+               Some, None, Result, Ok, Err, Arc, Mutex},
+    keywordstyle=\color{rustkw}\bfseries,
+    comment=[l]{//},
+    commentstyle=\color{rustcmt}\itshape,
+    stringstyle=\color{ruststr},
+    morestring=[b]",
+    sensitive=true
+}
+
+\lstset{
+    language=Rust,
+    backgroundcolor=\color{rustbg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{gray!40},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    tabsize=4,
+    showstringspaces=false,
+    captionpos=b
+}
+
+% ── Section formatting ─────────────────────────────────────────────────────────
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titlespacing{\section}{0pt}{2ex plus .5ex minus .2ex}{1ex}
+\titlespacing{\subsection}{0pt}{1.5ex}{0.5ex}
+\titlespacing{\subsubsection}{0pt}{1ex}{0.3ex}
+
+% ── Header / Footer ───────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small ETS Algoritma Pemrograman -- ELISA}
+\lhead{\small Kelompok 4}
+\cfoot{\thepage}
+
+% Halaman TOC tanpa header fancy
+\fancypagestyle{plain}{%
+    \fancyhf{}
+    \cfoot{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+}
+
+% ── Document ──────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── Cover Page ────────────────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\LARGE\bfseries Evaluasi Tengah Semester (ETS)\\[0.3em]
+    Algoritma Pemrograman\par}
+
+    \vspace{1cm}
+    {\large\bfseries Pengembangan Sistem Instrumentasi Pengukuran dan Kontrol\\
+    Berbasis Rust\par}
+
+    \vspace{0.8cm}
+    {\large\bfseries
+    ``ELISA Electrical Monitoring and Intelligent Safety Alarm\\
+    Sistem Monitoring Energi Listrik Rumah / UMKM Berbasis Rust''\par}
+
+    \vfill
+    \includegraphics[width=5cm]{LAMBANG ITS.png}
+    \vfill
+
+    {\normalsize
+    \begin{tabular}{ll}
+        \multicolumn{2}{c}{\bfseries Kelompok 4:} \\[8pt]
+        Devan Ale Satria       & 2042251047 \\[3pt]
+        Sheilka Janice Leandro & 2042251086 \\
+    \end{tabular}\par}
+
+    \vspace{2cm}
+\end{titlepage}
+
+\newpage
+\thispagestyle{plain}
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Pendahuluan}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Latar Belakang}
+
+Keselamatan instalasi listrik di rumah tangga dan usaha kecil menengah (UMKM)
+merupakan isu yang sering diabaikan. Berdasarkan data Kementerian ESDM, sebagian
+besar kebakaran di Indonesia disebabkan oleh korsleting listrik akibat kebocoran
+arus yang tidak terdeteksi secara dini. Kebocoran arus listrik selain dapat memicu
+kebakaran juga membahayakan keselamatan jiwa; arus sebesar 15\,mA sudah cukup
+menyebabkan kontraksi otot pada manusia, dan di atas 50\,mA dapat menyebabkan
+fibrilasi jantung.
+
+Sistem monitoring arus bocor yang ada di pasaran umumnya berbentuk alat fisik
+sederhana tanpa kemampuan pemantauan secara \emph{real-time} dan tidak memberikan
+informasi analitik kepada pengguna. Oleh karena itu, pada project ETS ini
+dikembangkan \textbf{ELISA} (\textit{Electrical Monitoring and Intelligent Safety
+Alarm}), sebuah sistem monitoring energi listrik berbasis perangkat lunak Rust
+yang terintegrasi dengan \emph{dashboard} web, mampu mendeteksi kebocoran arus
+secara \emph{real-time}, dan memberikan peringatan bertingkat sesuai standar
+PUIL 2011.
+
+\subsection{Tujuan}
+
+\begin{itemize}
+    \item Merancang dan mengimplementasikan sistem monitoring energi listrik berbasis bahasa pemrograman Rust.
+    \item Menerapkan konsep pemrograman berbasis objek (OOP) menggunakan \texttt{struct} dan \texttt{impl}.
+    \item Mengimplementasikan komputasi numerik berupa \emph{Moving Average}, standar deviasi, dan akumulasi energi.
+    \item Menyajikan hasil monitoring secara \emph{real-time} melalui \emph{dashboard} web yang dapat diakses dari \emph{browser}.
+\end{itemize}
+
+\subsection{Manfaat}
+
+Sistem ini dapat digunakan sebagai prototipe perangkat lunak untuk sistem
+monitoring kelistrikan di rumah tangga maupun UMKM, sebelum diintegrasikan ke
+\emph{hardware} nyata seperti ESP32 dengan sensor SCT-013.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Studi Kasus Instrumentasi}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Topik}
+
+Sistem Monitoring Energi Listrik deteksi kebocoran arus pada instalasi listrik
+rumah/UMKM dengan tiga cabang MCB (\textbf{DAPUR}, \textbf{KAMAR},
+\textbf{R.TAMU}).
+
+\subsection{Sensor yang Digunakan}
+
+\textbf{SCT-013} (\textit{Split Core Current Transformer / CT Clamp})
+
+SCT-013 adalah sensor arus non-invasif yang bekerja berdasarkan prinsip
+transformator arus (\textit{current transformer}). Sensor ini dipasang menjepit
+kabel tanpa perlu memutus instalasi. \textit{Output} berupa tegangan AC yang
+proporsional terhadap arus yang mengalir, kemudian dibaca oleh ADC
+mikrokontroler ESP32.
+
+Dalam sistem ELISA, setiap cabang MCB menggunakan dua buah SCT-013: satu
+dipasang di kabel fasa dan satu lagi di kabel netral. Prinsip deteksi kebocoran
+mengikuti hukum Kirchhoff:
+\[
+    I_{\text{bocor}} = I_{\text{fasa}} - I_{\text{netral}}
+\]
+
+Dalam kondisi normal, arus yang masuk melalui fasa sama dengan arus yang keluar
+melalui netral, sehingga selisihnya mendekati nol. Jika ada kebocoran arus ke
+bumi (\textit{ground}), arus netral akan lebih kecil dari arus fasa, dan
+selisihnya merepresentasikan besar arus bocor.
+
+\subsection{Threshold Berdasarkan PUIL 2011 dan Referensi Fisiologis}
+
+\begin{table}[H]
+    \centering
+    \caption{Threshold status kebocoran arus berdasarkan PUIL 2011}
+    \begin{tabular}{>{\bfseries}lcccc}
+        \toprule
+        Kondisi  & Rentang $I_{\text{bocor}}$ & LED    & Buzzer \\
+        \midrule
+        AMAN     & $< 15\,\text{mA}$          & Hijau  & OFF    \\
+        WASPADA  & $15\text{--}22\,\text{mA}$ & Kuning & OFF    \\
+        BAHAYA   & $> 22\,\text{mA}$          & Merah  & ON     \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Nilai 15\,mA dipilih karena merupakan ambang batas di mana seseorang masih bisa
+melepaskan konduktor secara mandiri. Nilai 22\,mA dipilih sebagai batas atas
+WASPADA sebelum memasuki zona bahaya fibrilasi jantung.
+
+\subsection{Parameter yang Dimonitor}
+
+Setiap cabang MCB memiliki parameter monitoring berikut:
+
+\begin{itemize}
+    \item Tegangan ($V$) dari ADC ESP32
+    \item Arus fasa $I_{\text{fasa}}$ (mA) dari SCT-013 pertama
+    \item Arus netral $I_{\text{netral}}$ (mA) dari SCT-013 kedua
+    \item Arus bocor $I_{\text{bocor}} = I_{\text{fasa}} - I_{\text{netral}}$ (mA), hasil kalkulasi
+    \item Daya aktif $P = V \times I_{\text{fasa}}$ (W)
+    \item \emph{Moving Average} arus fasa MA-5 (mA)
+    \item Standar deviasi arus fasa $\sigma$
+    \item Akumulasi energi total (kWh)
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Algoritma dan Flowchart}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Algoritma Sistem}
+
+\subsubsection*{Algoritma Utama}
+
+\begin{enumerate}
+    \item \textbf{MULAI}
+    \item Inisialisasi sistem (3 sensor: DAPUR, KAMAR, R.TAMU)
+    \item Jalankan web server di port 7878 (thread terpisah)
+    \item Tampilkan menu: \texttt{[1] Input Manual \quad [2] Simulasi \quad [3] Injeksi Bocor \quad [4] Keluar}
+    \item Baca pilihan pengguna
+    \begin{enumerate}[label=\alph*.]
+        \item \textbf{JIKA} pilihan = 1:\\
+              Untuk tiap sensor: baca tegangan, $I_{\text{fasa}}$, netral dari terminal\\
+              Validasi data $\to$ hitung $I_{\text{bocor}}$ $\to$ update aktuator $\to$ perbarui \emph{dashboard}
+        \item \textbf{JIKA} pilihan = 2:\\
+              Generate data simulasi otomatis\\
+              Tampilkan di \emph{dashboard}, tanya lanjut atau tidak\\
+              Jika tidak lanjut: reset sensor ke standby AMAN
+        \item \textbf{JIKA} pilihan = 3:\\
+              Cek \emph{baseline} (jika belum ada data, isi dulu semua cabang ke AMAN)\\
+              Tampilkan status tiap cabang saat ini\\
+              Pilih skenario: WASPADA / BAHAYA / Reset cabang / Reset semua\\
+              Hanya ubah cabang yang dipilih, cabang lain tetap
+        \item \textbf{JIKA} pilihan = 4:\\
+              Keluar dari program
+    \end{enumerate}
+    \item \textbf{ULANGI TERUS}
+    \item \textbf{SELESAI}
+\end{enumerate}
+
+\subsubsection*{Algoritma Kalkulasi Per Sensor}
+
+\begin{verbatim}
+FUNGSI update_all(sensor):
+  validate(sensor)      -> cek tegangan & arus dalam batas wajar
+  compute_leak(sensor)  -> I_bocor = I_fasa - I_netral
+  push_history(sensor)  -> tambahkan I_fasa ke riwayat MA-5
+  update_actuator(sensor)-> set LED & buzzer sesuai status
+  process(controller, status)
+                        -> catat jumlah kejadian waspada/bahaya
+  update_energy(system) -> E += (P_total / 1000) x 1 jam
+\end{verbatim}
+
+\subsubsection*{Algoritma Deteksi Status}
+
+\begin{verbatim}
+FUNGSI status(sensor):
+  JIKA is_valid = FALSE  -> kembalikan BAHAYA
+  JIKA leak_ma >= 22.0   -> kembalikan BAHAYA
+  JIKA leak_ma >= 15.0   -> kembalikan WASPADA
+  LAINNYA                -> kembalikan AMAN
+\end{verbatim}
+
+\subsection{Flowchart}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth, height=0.88\textheight, keepaspectratio]{Flowchart alprog.drawio.png}
+    \caption{Flowchart sistem ELISA}
+    \label{fig:flowchart}
+\end{figure}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Penjelasan Program Rust}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Struktur Program}
+
+\begin{table}[H]
+    \centering
+    \caption{Struktur modul program ELISA}
+    \small
+    \begin{tabularx}{\textwidth}{>{\bfseries}lX}
+        \toprule
+        Bagian & Isi / Fungsi \\
+        \midrule
+        Konstanta Sistem       & Menyimpan parameter sistem seperti threshold kebocoran, tegangan nominal, dan batas arus maksimum. \\[4pt]
+        LeakStatus (enum)      & Representasi level status kebocoran listrik: Aman, Waspada, dan Bahaya. \\[4pt]
+        Actuator (struct)      & Representasi aktuator seperti LED indikator dan buzzer alarm. \\[4pt]
+        Sensor (struct + impl) & Menyimpan data sensor tiap cabang MCB beserta logika pembacaan dan analisis kondisi kebocoran. \\[4pt]
+        Controller (struct + impl) & Mengatur pencatatan kejadian, pengambilan keputusan, dan pesan tindakan sistem. \\[4pt]
+        MonitoringSystem (struct + impl) & Mengoordinasikan seluruh sensor dan controller agar sistem monitoring berjalan terintegrasi. \\[4pt]
+        render\_dashboard      & Fungsi untuk menghasilkan tampilan dashboard berbasis HTML pada web server. \\[4pt]
+        Helper Input           & Kumpulan fungsi pendukung untuk membaca dan memvalidasi input dari terminal. \\[4pt]
+        input\_manual          & Mode untuk memasukkan data sensor secara manual melalui terminal. \\[4pt]
+        input\_simulasi        & Mode simulasi otomatis menggunakan data yang dihasilkan program. \\[4pt]
+        inject\_kebocoran      & Mode demonstrasi untuk mensimulasikan kondisi kebocoran listrik pada sistem. \\[4pt]
+        main                   & Entry point program yang menjalankan web server dan loop menu utama sistem ELISA. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Fitur Utama Program}
+
+\textbf{Input Data Sensor}\\
+Program mendukung tiga mode input: manual (pengguna mengetik nilai), simulasi
+otomatis (data deterministik acak berbasis \emph{seed}), dan injeksi kebocoran
+(demo skenario waspada/bahaya).
+
+\textbf{Percabangan}\\
+Digunakan secara ekstensif pada penentuan status (\texttt{LeakStatus::from\_ma}),
+validasi sensor (\texttt{validate}), dan seluruh logika menu.
+
+\textbf{Perulangan}\\
+\texttt{loop} pada menu utama, \texttt{for} pada iterasi sensor, dan \texttt{loop}
+pada \emph{helper} input terminal untuk validasi input pengguna.
+
+\textbf{Validasi Data}\\
+Fungsi \texttt{validate()} memeriksa bahwa tegangan berada di rentang 100--260\,V
+dan arus tidak melebihi batas maksimum sensor. Jika tidak valid, sensor otomatis
+berstatus BAHAYA.
+
+\textbf{Dashboard Web Real-Time}\\
+Web server \texttt{tiny\_http} berjalan di \emph{thread} terpisah dan menyajikan
+\emph{dashboard} HTML yang \emph{auto-refresh} setiap 3 detik. Dashboard
+menampilkan kartu per sensor dengan indikator LED, grafik riwayat arus, dan tabel
+alarm.
+
+\textbf{Concurrency dengan \texttt{Arc} dan \texttt{Mutex}}\\
+Data sistem dibungkus \texttt{Arc<Mutex<MonitoringSystem>{}>} untuk berbagi
+\emph{state} secara aman antara \emph{thread} utama (input terminal) dan
+\emph{thread} web server.
+
+\subsection{Potongan Kode Penting}
+
+\textbf{Kalkulasi arus bocor:}
+\begin{lstlisting}[language=Rust, caption={Fungsi compute\_leak}]
+fn compute_leak(&mut self) {
+    self.leak_ma = (self.current_fasa_ma
+        - self.current_netral_ma).max(0.0);
+}
+\end{lstlisting}
+
+\textbf{Validasi sensor:}
+\begin{lstlisting}[language=Rust, caption={Fungsi validate}]
+fn validate(&mut self) {
+    self.is_valid = self.voltage >= 100.0
+        && self.voltage <= 260.0
+        && self.current_fasa_ma >= 0.0
+        && self.current_fasa_ma <= MAX_CURRENT_MA
+        && self.current_netral_ma >= 0.0
+        && self.current_netral_ma <= MAX_CURRENT_MA;
+}
+\end{lstlisting}
+
+\textbf{Penentuan status keseluruhan sistem:}
+\begin{lstlisting}[language=Rust, caption={Fungsi overall\_status}]
+fn overall_status(&self) -> LeakStatus {
+    if self.sensors.iter().any(|s| s.status() == LeakStatus::Bahaya) {
+        LeakStatus::Bahaya
+    } else if self.sensors.iter().any(|s| s.status() == LeakStatus::Waspada) {
+        LeakStatus::Waspada
+    } else {
+        LeakStatus::Aman
+    }
+}
+\end{lstlisting}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Konsep OOP}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Penerapan Struct dan Impl}
+
+Program ELISA menggunakan pendekatan OOP Rust melalui \texttt{struct} sebagai
+representasi objek dan \texttt{impl} sebagai definisi \emph{method}-nya. Berikut
+tiga objek utama yang dipersyaratkan:
+
+\textbf{Objek Sensor}\\
+Sensor merepresentasikan satu cabang MCB dengan semua atributnya. \emph{Method}
+yang dimiliki antara lain \texttt{validate()}, \texttt{compute\_leak()},
+\texttt{push\_history()}, \texttt{moving\_average()}, \texttt{std\_deviation()},
+\texttt{status()}, dan \texttt{update\_actuator()}.
+
+\begin{lstlisting}[language=Rust, caption={Struct Sensor}]
+struct Sensor {
+    name: String,
+    voltage: f32,
+    current_fasa_ma: f32,
+    current_netral_ma: f32,
+    leak_ma: f32,
+    history_fasa: VecDeque<f32>,
+    is_valid: bool,
+    actuator: Actuator,
+}
+\end{lstlisting}
+
+\textbf{Objek Controller}\\
+Controller bertanggung jawab atas logika keputusan dan pencatatan \emph{event}
+per cabang. Method utama: \texttt{process()} (mencatat jumlah waspada/bahaya)
+dan \texttt{action\_message()} (menghasilkan pesan tindakan sesuai status).
+
+\begin{lstlisting}[language=Rust, caption={Struct Controller}]
+struct Controller {
+    name: String,
+    total_warnings: u32,
+    total_dangers: u32,
+}
+\end{lstlisting}
+
+\textbf{Objek MonitoringSystem}\\
+MonitoringSystem adalah sistem induk yang mengkoordinasikan seluruh sensor dan
+controller. Method utama: \texttt{update\_all()}, \texttt{total\_power()},
+\texttt{dominant\_branch()}, \texttt{update\_energy()}, dan
+\texttt{overall\_status()}.
+
+\begin{lstlisting}[language=Rust, caption={Struct MonitoringSystem}]
+struct MonitoringSystem {
+    sensors: Vec<Sensor>,
+    controllers: Vec<Controller>,
+    total_energy_kwh: f32,
+    reading_count: u32,
+}
+\end{lstlisting}
+
+\textbf{Objek Aktuator (tambahan)}\\
+Actuator merepresentasikan \emph{output} fisik \emph{hardware} (LED dan buzzer)
+yang tertanam di dalam tiap Sensor. Ini mendemonstrasikan konsep komposisi objek
+-- Sensor \emph{memiliki} Actuator sebagai atribut.
+
+\subsection{Enkapsulasi}
+
+Setiap \texttt{struct} hanya mengekspos \emph{method} yang diperlukan. Logika
+internal seperti perhitungan \texttt{leak\_ma} dan \texttt{is\_valid} dikelola
+sepenuhnya oleh \emph{method}-method milik Sensor, tanpa perlu diakses langsung
+dari luar.
+
+\subsection{Polimorfisme melalui Enum}
+
+\texttt{LeakStatus} (enum dengan tiga varian: Aman, Waspada, Bahaya) berperan
+sebagai mekanisme polimorfisme. Method \texttt{label()} dan \texttt{color()} pada
+enum menghasilkan \emph{output} berbeda tergantung varian yang aktif, tanpa
+memerlukan kondisi \texttt{if-else} berulang di luar \texttt{struct}.
+
+\begin{lstlisting}[language=Rust, caption={Method color pada LeakStatus}]
+fn color(&self) -> &str {
+    match self {
+        Self::Aman     => "#16a34a",
+        Self::Waspada  => "#d97706",
+        Self::Bahaya   => "#dc2626",
+    }
+}
+\end{lstlisting}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Implementasi Komputasi Numerik}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Program ELISA mengimplementasikan empat metode komputasi numerik yang semuanya
+relevan dengan pengolahan sinyal sensor listrik.
+
+\subsection{Kalkulasi Arus Bocor (Diferensial Arus)}
+
+\textbf{Prinsip:} Berdasarkan hukum Kirchhoff tentang arus -- dalam rangkaian
+tertutup normal, arus masuk (fasa) harus sama dengan arus keluar (netral). Jika
+ada kebocoran ke \emph{ground}, selisihnya adalah arus bocor.
+
+\textbf{Formula:}
+\[
+    I_{\text{bocor}} = \max(I_{\text{fasa}} - I_{\text{netral}},\; 0)
+\]
+
+\textbf{Implementasi:}
+\begin{lstlisting}[language=Rust, caption={Fungsi compute\_leak}]
+fn compute_leak(&mut self) {
+    self.leak_ma = (self.current_fasa_ma
+        - self.current_netral_ma).max(0.0);
+}
+\end{lstlisting}
+
+Fungsi \texttt{.max(0.0)} memastikan hasil tidak negatif -- \emph{noise} ADC
+bisa menyebabkan $I_{\text{netral}}$ sedikit lebih besar dari $I_{\text{fasa}}$
+dalam kondisi ideal, yang secara fisik berarti tidak ada kebocoran.
+
+\subsection{Moving Average (MA-5)}
+
+\textbf{Prinsip:} \emph{Moving average} digunakan untuk meredam \emph{noise}
+dari pembacaan ADC. Dengan mengambil rata-rata dari 5 pembacaan terakhir,
+fluktuasi sesaat tidak langsung mempengaruhi nilai yang ditampilkan.
+
+\textbf{Formula:}
+\[
+    \text{MA}_n = \frac{x_n + x_{n-1} + x_{n-2} + x_{n-3} + x_{n-4}}{5}
+\]
+
+\textbf{Implementasi:}
+\begin{lstlisting}[language=Rust, caption={Fungsi moving\_average}]
+fn moving_average(&self) -> f32 {
+    if self.history_fasa.is_empty() { return 0.0; }
+    self.history_fasa.iter().sum::<f32>()
+        / self.history_fasa.len() as f32
+}
+\end{lstlisting}
+
+\texttt{VecDeque} digunakan sebagai buffer geser -- saat buffer penuh (5 data),
+data terlama dihapus otomatis sebelum data baru masuk (\texttt{pop\_front()} +
+\texttt{push\_back()}).
+
+\subsection{Standar Deviasi (Sample, n-1)}
+
+\textbf{Prinsip:} Standar deviasi dari riwayat arus fasa digunakan sebagai
+indikator kestabilan arus. Nilai $\sigma$ yang besar menandakan arus tidak
+stabil, yang dapat menjadi \emph{early warning} meski arus bocor masih di bawah
+\emph{threshold}.
+
+\textbf{Formula:}
+\[
+    \sigma = \sqrt{\frac{\sum_{i=1}^{n}(x_i - \bar{x})^2}{n-1}}
+\]
+
+\textbf{Implementasi:}
+\begin{lstlisting}[language=Rust, caption={Fungsi std\_deviation}]
+fn std_deviation(&self) -> f32 {
+    if self.history_fasa.len() < 2 { return 0.0; }
+    let avg = self.moving_average();
+    let var: f32 = self.history_fasa.iter()
+        .map(|x| (x - avg).powi(2))
+        .sum::<f32>()
+        / (self.history_fasa.len() as f32 - 1.0);
+    var.sqrt()
+}
+\end{lstlisting}
+
+Pembagi $n-1$ (bukan $n$) digunakan karena ini adalah standar deviasi sampel --
+data yang tersedia hanya sebagian kecil dari keseluruhan pembacaan sensor
+sepanjang waktu.
+
+\subsection{Akumulasi Energi (Numerik Integrasi Euler)}
+
+\textbf{Prinsip:} Energi adalah integral daya terhadap waktu. Karena pembacaan
+bersifat diskrit, digunakan metode integrasi numerik Euler \emph{forward} --
+mengasumsikan daya konstan selama satu interval pembacaan.
+
+\textbf{Formula:}
+\[
+    E_{\text{total}} \mathrel{+}= \frac{P_{\text{total}}}{1000} \times \Delta t
+    \quad (\Delta t = 1\,\text{jam per pembacaan})
+\]
+
+\textbf{Implementasi:}
+\begin{lstlisting}[language=Rust, caption={Fungsi update\_energy}]
+fn update_energy(&mut self) {
+    self.total_energy_kwh +=
+        (self.total_power() / 1000.0) * 1.0;
+    self.reading_count += 1;
+}
+\end{lstlisting}
+
+Pembagian 1000 mengkonversi dari Watt ke kilowatt, sehingga satuan hasil adalah
+kWh.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Hasil Pengujian}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Pengujian Mode Input Manual}
+
+\textbf{Skenario:} Input data tiga cabang dengan variasi kondisi.
+
+\textbf{Hasil:} Dashboard web menampilkan kartu DAPUR dengan LED hijau, KAMAR
+dengan LED kuning, dan R.TAMU dengan LED merah dan buzzer aktif. Tabel alarm di
+bawah kartu menampilkan dua entri (KAMAR dan R.TAMU) dengan pesan tindakan yang
+sesuai.
+
+\subsection{Pengujian Mode Simulasi Otomatis}
+
+\textbf{Skenario:} Jalankan simulasi 5 iterasi berturut-turut.
+
+Simulasi menggunakan data deterministik berbasis \emph{seed} untuk mereproduksi
+kondisi yang bervariasi: 50\% pembacaan menghasilkan status AMAN, 25\% WASPADA,
+dan 25\% BAHAYA per cabang. Setiap iterasi memperbarui \emph{dashboard} dan
+mengakumulasi data riwayat untuk \emph{Moving Average}.
+
+\textbf{Hasil:} Moving Average MA-5 terlihat mulus dan tidak melonjak drastis
+meski ada satu pembacaan ekstrem. Standar deviasi naik ketika ada transisi dari
+AMAN ke BAHAYA, mengkonfirmasi fungsinya sebagai \emph{early warning} kestabilan.
+
+\subsection{Pengujian Mode Injeksi Kebocoran}
+
+\textbf{Skenario 1 -- Injeksi tunggal (BAHAYA pada KAMAR):}\\
+Pilih menu 3 $\to$ pilih BAHAYA $\to$ pilih KAMAR
+
+\begin{table}[H]
+    \centering
+    \caption{Hasil pengujian skenario injeksi tunggal}
+    \begin{tabular}{lccccc}
+        \toprule
+        \textbf{Cabang} & \textbf{Tegangan (V)} & \textbf{$I_\text{fasa}$ (mA)}
+            & \textbf{$I_\text{netral}$ (mA)} & \textbf{$I_\text{bocor}$ (mA)}
+            & \textbf{Status} \\
+        \midrule
+        DAPUR   & 220 & 800 & 799 & 1.0  & AMAN     \\
+        KAMAR   & 220 & 500 & 482 & 18.0 & WASPADA  \\
+        R. TAMU & 220 & 350 & 320 & 30.0 & BAHAYA   \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\textbf{Skenario 2 -- Injeksi ganda (WASPADA DAPUR + BAHAYA KAMAR):}\\
+Injeksi WASPADA ke DAPUR $\to$ $I_{\text{bocor}}$ DAPUR $\approx$ 18\,mA.
+Kembali menu 3, injeksi BAHAYA ke KAMAR $\to$ $I_{\text{bocor}}$ KAMAR
+$\approx$ 30\,mA. R.TAMU tetap AMAN.\\
+\emph{Dashboard:} DAPUR kuning, KAMAR merah, R.TAMU hijau \checkmark
+
+\textbf{Skenario 3 -- Reset parsial:}\\
+Reset cabang DAPUR saja $\to$ DAPUR kembali hijau; KAMAR tetap merah
+\checkmark
+
+\textbf{Skenario 4 -- Setelah simulasi, masuk injeksi:}\\
+Jalankan simulasi 3x, ketik \texttt{n} untuk reset. Masuk menu 3 $\to$
+\emph{baseline} otomatis terisi AMAN. Injeksi BAHAYA ke R.TAMU $\to$ hanya
+R.TAMU merah \checkmark
+
+\subsection{Pengujian Validasi Sensor Error}
+
+\textbf{Skenario:} Input tegangan 0\,V (sensor terputus).
+
+\textbf{Hasil:} \texttt{validate()} mengembalikan \texttt{is\_valid = false}.
+Status langsung BAHAYA tanpa menunggu perhitungan $I_{\text{bocor}}$. Dashboard
+menampilkan label ``Sensor ERROR'' berwarna merah pada cabang tersebut.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Analisis Hasil}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Ketepatan Deteksi Kebocoran}
+
+Sistem berhasil mendeteksi dan mengklasifikasikan kebocoran arus sesuai threshold
+PUIL 2011 dengan akurasi 100\% pada semua skenario pengujian. Prinsip diferensial
+$I_{\text{fasa}} - I_{\text{netral}}$ terbukti efektif sebagai representasi
+perangkat lunak dari cara kerja sensor SCT-013 pada \emph{hardware} nyata.
+
+\subsection{Efektivitas Moving Average}
+
+Moving Average MA-5 terbukti efektif meredam fluktuasi data. Pada pengujian
+simulasi, terdapat kasus di mana satu pembacaan menghasilkan arus fasa 850\,mA
+disusul pembacaan 750\,mA; tanpa MA, selisih ini terlihat besar di
+\emph{dashboard}. Dengan MA-5, nilai yang ditampilkan adalah rata-rata 5
+pembacaan sehingga lebih representatif terhadap kondisi aktual beban listrik.
+
+\subsection{Standar Deviasi sebagai Early Warning}
+
+Nilai $\sigma$ yang meningkat sebelum arus bocor mencapai \emph{threshold}
+memberikan potensi \emph{early warning} tambahan. Dalam skenario di mana arus
+bocor meningkat bertahap (misalnya isolasi kabel yang mulai rusak), $\sigma$
+akan meningkat lebih dulu sebelum $I_{\text{bocor}}$ melewati 15\,mA, memberi
+waktu reaksi lebih awal bagi pengguna.
+
+\subsection{Isolasi State Antar Cabang}
+
+Salah satu pencapaian teknis penting dalam pengembangan ini adalah memastikan
+bahwa injeksi kebocoran pada satu cabang tidak mempengaruhi \emph{state} cabang
+lain. Hal ini dicapai dengan mengelola \texttt{current\_netral\_ma} secara
+independen per sensor, dan hanya memodifikasi sensor yang ditunjuk tanpa
+menyentuh data sensor lainnya.
+
+\subsection{Keterbatasan Sistem}
+
+\begin{itemize}
+    \item \textbf{Simulasi bukan data \emph{hardware} nyata:} Nilai arus pada mode simulasi dihasilkan secara deterministik berdasarkan \emph{seed}, bukan dari pembacaan ADC ESP32 sesungguhnya. Implementasi \emph{hardware} nyata memerlukan integrasi driver ADC dan kalibrasi SCT-013.
+    \item \textbf{Interval waktu tidak akurat:} Akumulasi energi mengasumsikan setiap pembacaan setara 1 jam, yang tidak mencerminkan waktu sesungguhnya antara dua pemanggilan \texttt{update\_all()}.
+    \item \textbf{Tidak ada penyimpanan data:} Data monitoring hilang ketika program dihentikan. Implementasi lanjutan dapat menambahkan \emph{logging} ke file CSV atau \emph{database}.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Kesimpulan}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{itemize}
+    \item Sistem ELISA berhasil diimplementasikan menggunakan bahasa pemrograman Rust dengan arsitektur modular berbasis OOP, mencakup \texttt{struct} Sensor, Controller, Actuator, dan MonitoringSystem beserta \emph{method}-method yang diperlukan.
+
+    \item Prinsip deteksi kebocoran arus dengan formula $I_{\text{bocor}} = I_{\text{fasa}} - I_{\text{netral}}$ berhasil diimplementasikan dan terbukti bekerja sesuai ekspektasi pada seluruh skenario pengujian, dengan \emph{threshold} yang mengacu pada PUIL 2011.
+
+    \item Empat metode komputasi numerik berhasil diterapkan: kalkulasi arus bocor (diferensial), Moving Average MA-5 (\emph{smoothing} sensor), standar deviasi sampel (monitoring kestabilan), dan akumulasi energi (integrasi Euler).
+
+    \item \emph{Dashboard} web \emph{real-time} berhasil diintegrasikan menggunakan \texttt{tiny\_http} dan \emph{concurrency} \texttt{Arc<Mutex<MonitoringSystem>{}>}, memungkinkan pemantauan dari \emph{browser} tanpa menghentikan input terminal.
+
+    \item Seluruh \emph{bug} kritis yang ditemukan selama pengembangan -- termasuk masalah isolasi \emph{state} antar cabang saat injeksi, kegagalan validasi pasca-reset simulasi, dan kondisi \emph{baseline} yang salah -- berhasil diidentifikasi dan diperbaiki secara sistematis.
+
+    \item Sistem ini siap dikembangkan lebih lanjut ke arah integrasi \emph{hardware} ESP32 + SCT-013 untuk \emph{deployment} nyata di rumah tangga atau UMKM.
+\end{itemize}
+
+\end{document}
